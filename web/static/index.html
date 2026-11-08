@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lakehouse</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Trino · Iceberg</p>
+      <h1>Lakehouse</h1>
+    </div>
+    <p class="hint">Preview shows 500 rows. CSV download includes up to 10,000.</p>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <label class="filter-label" for="filter">Tables</label>
+      <input id="filter" type="search" placeholder="Filter by name" autocomplete="off">
+      <div id="table-list" class="table-list" aria-live="polite">
+        <p class="muted">Loading tables…</p>
+      </div>
+    </aside>
+
+    <main>
+      <form id="query-form">
+        <label class="sql-label" for="sql">SQL</label>
+        <textarea id="sql" name="sql" spellcheck="false" rows="8">SELECT *
+FROM iceberg.sales.customers</textarea>
+        <div class="actions">
+          <button type="submit" id="run">Run</button>
+          <button type="button" id="download" class="secondary">Download CSV</button>
+          <p id="status" class="status"></p>
+        </div>
+      </form>
+
+      <section class="results">
+        <div id="message" class="message" hidden></div>
+        <div class="table-scroll">
+          <table id="results">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
