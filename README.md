@@ -97,6 +97,7 @@ docker compose down
 ```
 
 `docker compose down -v` also deletes the Postgres catalog and the warehouse. The next `up` loads the example tables again. Postgres init SQL runs only when the data volume is empty.
+Stop the S3 engine with colima stop, and start it again with colima start
 
 ## Layout
 
