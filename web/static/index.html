@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lakehouse</title>
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/app.css?v=2">
 </head>
 <body>
   <header class="topbar">
@@ -27,8 +27,11 @@
     <main>
       <form id="query-form">
         <label class="sql-label" for="sql">SQL</label>
-        <textarea id="sql" name="sql" spellcheck="false" rows="8">SELECT *
+        <div class="sql-editor">
+          <pre id="sql-gutter" class="sql-gutter" aria-hidden="true">1</pre>
+          <textarea id="sql" name="sql" spellcheck="false" wrap="off" rows="8">SELECT *
 FROM iceberg.sales.customers</textarea>
+        </div>
         <div class="actions">
           <button type="submit" id="run">Run</button>
           <button type="button" id="download" class="secondary">Download CSV</button>
@@ -48,6 +51,6 @@ FROM iceberg.sales.customers</textarea>
     </main>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=2"></script>
 </body>
 </html>

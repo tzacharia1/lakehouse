@@ -1,4 +1,5 @@
 const sqlInput = document.querySelector("#sql");
+const sqlGutter = document.querySelector("#sql-gutter");
 const form = document.querySelector("#query-form");
 const runButton = document.querySelector("#run");
 const downloadButton = document.querySelector("#download");
@@ -18,6 +19,13 @@ function quoteIdent(name) {
 
 function selectSql(table) {
   return `SELECT *\nFROM ${quoteIdent(table.catalog)}.${quoteIdent(table.schema)}.${quoteIdent(table.name)}\nLIMIT 100`;
+}
+
+function syncLineNumbers() {
+  const count = Math.max(sqlInput.value.split("\n").length, 1);
+  const numbers = Array.from({ length: count }, (_, index) => String(index + 1)).join("\n");
+  if (sqlGutter.textContent !== numbers) sqlGutter.textContent = numbers;
+  sqlGutter.scrollTop = sqlInput.scrollTop;
 }
 
 function setMessage(text, isError) {
@@ -138,6 +146,7 @@ function renderTables() {
       if (button.dataset.sql === sqlInput.value) button.setAttribute("aria-current", "true");
       button.addEventListener("click", () => {
         sqlInput.value = button.dataset.sql;
+        syncLineNumbers();
         for (const other of tableList.querySelectorAll(".table-button")) {
           other.removeAttribute("aria-current");
         }
@@ -161,6 +170,10 @@ sqlInput.addEventListener("keydown", (event) => {
     runQuery(sqlInput.value);
   }
 });
+
+sqlInput.addEventListener("input", syncLineNumbers);
+sqlInput.addEventListener("scroll", syncLineNumbers);
+syncLineNumbers();
 
 downloadButton.addEventListener("click", async () => {
   const statement = (activeSql || sqlInput.value).trim();
