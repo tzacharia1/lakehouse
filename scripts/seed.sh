@@ -34,6 +34,9 @@ if [[ "${ddl_ok}" -ne 1 ]]; then
   exit 1
 fi
 
+echo "Setting Iceberg format version 3..."
+"${TRINO[@]}" --file /sql/04-format-v3.sql
+
 count="$("${TRINO[@]}" --output-format CSV_UNQUOTED --execute "SELECT count(*) FROM iceberg.sales.customers" | tr -d '[:space:]')"
 if [[ "${count}" == "0" ]]; then
   echo "Loading sample rows..."

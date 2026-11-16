@@ -197,6 +197,95 @@ button {
 
 .status { margin: 0; }
 
+.lineage {
+  margin-top: 1.1rem;
+}
+
+.lineage-heading h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.lineage-heading p { margin: 0.25rem 0 0.7rem; }
+
+.lineage-track {
+  display: flex;
+  gap: 0.45rem;
+  align-items: stretch;
+  overflow-x: auto;
+  padding-bottom: 0.3rem;
+}
+
+.lineage-card {
+  flex: 0 0 210px;
+  margin: 0;
+  padding: 0.7rem 0.75rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lineage-card:hover,
+.lineage-card:focus-visible {
+  border-color: var(--accent);
+}
+
+.lineage-card[aria-pressed="true"] {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.lineage-card.head {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.lineage-card .op {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 650;
+  text-transform: lowercase;
+}
+
+.lineage-card .when,
+.lineage-card .meta {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.lineage-card .rows {
+  margin: 0.55rem 0 0.3rem;
+  font-size: 0.88rem;
+}
+
+.row-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row-ids li {
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: #e7f6f1;
+  color: #0c5c49;
+  font: 0.75rem/1.3 var(--mono);
+}
+
+.lineage-arrow {
+  align-self: center;
+  color: var(--muted);
+  font-size: 1.2rem;
+}
+
 .results { margin-top: 1rem; }
 
 .message {

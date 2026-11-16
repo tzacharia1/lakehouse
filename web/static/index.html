@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lakehouse</title>
-  <link rel="stylesheet" href="/static/app.css?v=2">
+  <link rel="stylesheet" href="/static/app.css?v=5">
 </head>
 <body>
   <header class="topbar">
@@ -39,6 +39,14 @@ FROM iceberg.sales.customers</textarea>
         </div>
       </form>
 
+      <section id="lineage" class="lineage" hidden>
+        <div class="lineage-heading">
+          <h2 id="lineage-title">Lineage</h2>
+          <p id="lineage-note" class="muted"></p>
+        </div>
+        <div id="lineage-track" class="lineage-track"></div>
+      </section>
+
       <section class="results">
         <div id="message" class="message" hidden></div>
         <div class="table-scroll">
@@ -51,6 +59,6 @@ FROM iceberg.sales.customers</textarea>
     </main>
   </div>
 
-  <script src="/static/app.js?v=2"></script>
+  <script src="/static/app.js?v=5"></script>
 </body>
 </html>

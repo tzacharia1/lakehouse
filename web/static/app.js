@@ -9,6 +9,10 @@ const tableHead = document.querySelector("#results thead");
 const tableBody = document.querySelector("#results tbody");
 const tableList = document.querySelector("#table-list");
 const filterInput = document.querySelector("#filter");
+const lineageSection = document.querySelector("#lineage");
+const lineageTitle = document.querySelector("#lineage-title");
+const lineageNote = document.querySelector("#lineage-note");
+const lineageTrack = document.querySelector("#lineage-track");
 
 let tables = [];
 let activeSql = "";
@@ -19,6 +23,10 @@ function quoteIdent(name) {
 
 function selectSql(table) {
   return `SELECT *\nFROM ${quoteIdent(table.catalog)}.${quoteIdent(table.schema)}.${quoteIdent(table.name)}\nLIMIT 100`;
+}
+
+function snapshotSql(table, snapshotId) {
+  return `SELECT *\nFROM ${quoteIdent(table.catalog)}.${quoteIdent(table.schema)}.${quoteIdent(table.name)}\nFOR VERSION AS OF ${snapshotId}`;
 }
 
 function syncLineNumbers() {
@@ -112,6 +120,103 @@ async function runQuery(sql) {
   }
 }
 
+function addText(parent, tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  node.textContent = text;
+  parent.append(node);
+  return node;
+}
+
+function renderLineage(payload) {
+  lineageSection.hidden = false;
+  lineageTitle.textContent = `Lineage · ${payload.catalog}.${payload.schema}.${payload.table}`;
+  lineageNote.textContent = payload.row_lineage_error
+    ? "Click a snapshot to query it. Row ids are unavailable until the table is Iceberg format version 3 and a new commit is written."
+    : "Click a snapshot to run SELECT * FOR VERSION AS OF that snapshot. Chips are current rows last changed there.";
+  lineageTrack.replaceChildren();
+  if (!payload.snapshots.length) {
+    addText(lineageTrack, "p", "muted", "This table has no snapshots yet.");
+    return;
+  }
+  payload.snapshots.forEach((snapshot, index) => {
+    if (index > 0) addText(lineageTrack, "span", "lineage-arrow", "→");
+    const snapshotId = String(snapshot.snapshot_id ?? "");
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = snapshot.is_head ? "lineage-card head" : "lineage-card";
+    card.dataset.snapshotId = snapshotId;
+    const operation = snapshot.operation || "snapshot";
+    card.setAttribute("aria-pressed", "false");
+    card.setAttribute("aria-label", `Query ${operation} snapshot ${snapshotId}`);
+    addText(card, "span", "op", operation);
+    addText(card, "p", "when", snapshot.committed_at || "");
+    const sequence = snapshot.sequence_number ? `sequence ${snapshot.sequence_number}` : "sequence unknown";
+    const totals = [
+      sequence,
+      snapshot.added_records ? `+${snapshot.added_records} added` : "",
+      snapshot.deleted_records ? `−${snapshot.deleted_records} deleted` : "",
+      snapshot.total_records ? `${snapshot.total_records} total` : "",
+    ].filter(Boolean).join(" · ");
+    addText(card, "p", "meta", totals);
+    addText(
+      card,
+      "p",
+      "rows",
+      snapshot.current_row_count
+        ? `${snapshot.current_row_count} current row${snapshot.current_row_count === 1 ? "" : "s"}`
+        : "No current rows",
+    );
+    if (snapshot.row_ids.length) {
+      const list = document.createElement("ul");
+      list.className = "row-ids";
+      for (const rowId of snapshot.row_ids) addText(list, "li", "", rowId);
+      if (snapshot.row_ids_truncated) addText(list, "li", "", "…");
+      card.append(list);
+    }
+    card.addEventListener("click", () => {
+      if (!/^\d+$/.test(snapshotId)) {
+        setMessage("This snapshot id cannot be queried.", true);
+        return;
+      }
+      sqlInput.value = snapshotSql(
+        { catalog: payload.catalog, schema: payload.schema, name: payload.table },
+        snapshotId,
+      );
+      syncLineNumbers();
+      for (const other of lineageTrack.querySelectorAll(".lineage-card")) {
+        other.setAttribute("aria-pressed", "false");
+      }
+      card.setAttribute("aria-pressed", "true");
+      runQuery(sqlInput.value);
+    });
+    lineageTrack.append(card);
+  });
+}
+
+async function loadLineage(table) {
+  lineageSection.hidden = false;
+  lineageTitle.textContent = `Lineage · ${table.catalog}.${table.schema}.${table.name}`;
+  lineageNote.textContent = "Loading snapshot history…";
+  lineageTrack.replaceChildren();
+  const params = new URLSearchParams({
+    catalog: table.catalog,
+    schema: table.schema,
+    table: table.name,
+  });
+  try {
+    const response = await fetch(`/api/lineage?${params}`);
+    const payload = await response.json();
+    if (!response.ok) {
+      lineageNote.textContent = payload.detail || "Could not load lineage.";
+      return;
+    }
+    renderLineage(payload);
+  } catch (error) {
+    lineageNote.textContent = error.message;
+  }
+}
+
 function renderTables() {
   const query = filterInput.value.trim().toLowerCase();
   tableList.replaceChildren();
@@ -152,6 +257,7 @@ function renderTables() {
         }
         button.setAttribute("aria-current", "true");
         runQuery(sqlInput.value);
+        loadLineage(table);
       });
       section.append(button);
     }
@@ -222,6 +328,8 @@ async function loadTables() {
     tables = payload.tables;
     renderTables();
     runQuery(sqlInput.value);
+    const customers = tables.find((table) => table.catalog === "iceberg" && table.schema === "sales" && table.name === "customers");
+    if (customers) loadLineage(customers);
   } catch (error) {
     tableList.textContent = error.message;
   }

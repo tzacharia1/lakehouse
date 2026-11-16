@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS iceberg.sales.customers (
     email VARCHAR,
     country VARCHAR,
     signup_date DATE
+)
+WITH (
+    format_version = 3
 );
 
 -- sales.orders: fact table partitioned by order month.
@@ -21,5 +24,6 @@ CREATE TABLE IF NOT EXISTS iceberg.sales.orders (
 )
 WITH (
     partitioning = ARRAY['month(order_date)'],
-    format = 'PARQUET'
+    format = 'PARQUET',
+    format_version = 3
 );

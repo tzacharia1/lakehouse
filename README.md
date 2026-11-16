@@ -29,6 +29,13 @@ Both tables are created in the `iceberg.sales` schema on first startup.
 * `sales.customers` is an unpartitioned dimension table (5 rows).
 * `sales.orders` is a fact table partitioned by `month(order_date)` (8 rows). `customer_id` joins to `customers`.
 
+New tables use Iceberg format version 3. The starter tables are altered to version 3 on startup. Trino 484 already ships Iceberg 1.12.0, and its version 3 support is experimental. Row lineage columns are hidden. They are assigned on the first commit after a table becomes version 3:
+
+```sql
+SELECT "$row_id", "$last_updated_sequence_number", customer_id, full_name
+FROM iceberg.sales.customers;
+```
+
 ## Prerequisites
 
 Docker with Compose.

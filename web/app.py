@@ -1,17 +1,20 @@
 import csv
 import io
 import os
+import re
 import threading
 import time
 from datetime import date, datetime
 from decimal import Decimal
 
 import trino
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from trino.exceptions import TrinoQueryError
+
+IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 PREVIEW_LIMIT = 500
 CSV_LIMIT = 10_000
@@ -42,6 +45,40 @@ def trino_connect():
 
 def quote_ident(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
+
+
+def require_ident(value: str, label: str) -> str:
+    if not IDENT.match(value):
+        raise HTTPException(status_code=400, detail=f"Invalid {label}.")
+    return value
+
+
+def qualified_name(catalog: str, schema: str, table: str) -> str:
+    return ".".join(quote_ident(part) for part in (catalog, schema, table))
+
+
+def fetch_all(sql: str):
+    connection = trino_connect()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(sql)
+        if not cursor.description:
+            return []
+        return cursor.fetchall()
+    except TrinoQueryError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Could not query Trino: {exc}") from exc
+    finally:
+        connection.close()
+
+
+def as_text(value):
+    if value is None:
+        return None
+    return str(value)
 
 
 def json_cell(value):
@@ -156,6 +193,86 @@ def query(body: QueryRequest):
         "truncated": truncated,
         "limit": PREVIEW_LIMIT,
         "elapsed_ms": elapsed_ms,
+    }
+
+
+@app.get("/api/lineage")
+def lineage(
+    catalog: str = Query(min_length=1),
+    schema: str = Query(min_length=1),
+    table: str = Query(min_length=1),
+):
+    catalog = require_ident(catalog, "catalog")
+    schema = require_ident(schema, "schema")
+    table = require_ident(table, "table")
+    table_name = qualified_name(catalog, schema, table)
+    snapshots_name = qualified_name(catalog, schema, f"{table}$snapshots")
+    log_name = qualified_name(catalog, schema, f"{table}$metadata_log_entries")
+
+    snapshot_rows = fetch_all(
+        "SELECT CAST(committed_at AS varchar), CAST(snapshot_id AS varchar), "
+        "CAST(parent_id AS varchar), operation, "
+        "element_at(summary, 'added-records'), "
+        "element_at(summary, 'deleted-records'), "
+        "element_at(summary, 'total-records') "
+        f"FROM {snapshots_name} ORDER BY committed_at"
+    )
+    sequence_rows = fetch_all(
+        "SELECT CAST(latest_snapshot_id AS varchar), CAST(max(latest_sequence_number) AS varchar) "
+        f"FROM {log_name} GROUP BY 1"
+    )
+    sequence_by_snapshot = {snapshot_id: sequence for snapshot_id, sequence in sequence_rows}
+
+    row_lineage_error = None
+    rows_by_sequence: dict[str, dict] = {}
+    try:
+        lineage_rows = fetch_all(
+            f"SELECT CAST({quote_ident('$last_updated_sequence_number')} AS varchar), "
+            f"CAST({quote_ident('$row_id')} AS varchar) "
+            f"FROM {table_name} "
+            f"ORDER BY 1, 2 "
+            "LIMIT 1000"
+        )
+    except HTTPException as exc:
+        row_lineage_error = exc.detail if isinstance(exc.detail, str) else "Row lineage is not available for this table."
+        lineage_rows = []
+    for sequence, row_id in lineage_rows:
+        bucket = rows_by_sequence.setdefault(sequence or "", {"count": 0, "ids": [], "truncated": False})
+        bucket["count"] += 1
+        if row_id is None:
+            continue
+        if len(bucket["ids"]) < 12:
+            bucket["ids"].append(row_id)
+        else:
+            bucket["truncated"] = True
+
+    snapshots = []
+    for committed_at, snapshot_id, parent_id, operation, added, deleted, total in snapshot_rows:
+        sequence = sequence_by_snapshot.get(snapshot_id)
+        bucket = rows_by_sequence.get(sequence or "", {"count": 0, "ids": [], "truncated": False})
+        snapshots.append({
+            "committed_at": as_text(committed_at),
+            "snapshot_id": as_text(snapshot_id),
+            "parent_id": as_text(parent_id),
+            "operation": as_text(operation),
+            "sequence_number": as_text(sequence),
+            "added_records": as_text(added),
+            "deleted_records": as_text(deleted),
+            "total_records": as_text(total),
+            "current_row_count": bucket["count"],
+            "row_ids": bucket["ids"],
+            "row_ids_truncated": bucket["truncated"],
+        })
+    parent_ids = {item["parent_id"] for item in snapshots if item["parent_id"]}
+    for item in snapshots:
+        item["is_head"] = item["snapshot_id"] not in parent_ids
+
+    return {
+        "catalog": catalog,
+        "schema": schema,
+        "table": table,
+        "snapshots": snapshots,
+        "row_lineage_error": row_lineage_error,
     }
 
 
