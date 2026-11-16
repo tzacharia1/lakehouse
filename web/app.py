@@ -31,6 +31,7 @@ _table_cache: dict = {"at": 0.0, "tables": None}
 
 class QueryRequest(BaseModel):
     sql: str = Field(min_length=1, max_length=MAX_SQL_CHARS)
+    limit: int | None = Field(default=None, ge=1, le=CSV_LIMIT)
 
 
 def trino_connect():
@@ -185,13 +186,14 @@ def tables():
 
 @app.post("/api/query")
 def query(body: QueryRequest):
-    columns, rows, truncated, elapsed_ms = run_sql(clean_sql(body.sql), PREVIEW_LIMIT)
+    limit = body.limit if body.limit is not None else PREVIEW_LIMIT
+    columns, rows, truncated, elapsed_ms = run_sql(clean_sql(body.sql), limit)
     return {
         "columns": columns,
         "rows": rows,
         "row_count": len(rows),
         "truncated": truncated,
-        "limit": PREVIEW_LIMIT,
+        "limit": limit,
         "elapsed_ms": elapsed_ms,
     }
 
