@@ -8,6 +8,7 @@ A local lakehouse you can start with Docker Compose.
 | [Apache Iceberg](https://iceberg.apache.org/) | Table format (Parquet data files, snapshot metadata) | `s3://warehouse/` |
 | PostgreSQL 16 | Iceberg JDBC catalog (namespace and table pointers) | `localhost:5432`, database `iceberg` |
 | [SeaweedFS](https://github.com/seaweedfs/seaweedfs) 4.53 | S3-compatible object storage for data and Iceberg metadata files | S3 http://localhost:8333, filer http://localhost:8888 |
+| Iceberg REST fixture | Same JDBC catalog, exposed over HTTP for the in-browser DuckDB | http://localhost:8181 |
 
 Trino's `iceberg` catalog uses `iceberg.catalog.type=jdbc`. Postgres stores two catalog tables, `iceberg_tables` and `iceberg_namespace_properties`. Those rows point at Iceberg metadata JSON in the object store. The Parquet data files live next to that metadata. Postgres does not store the table rows.
 
@@ -40,7 +41,7 @@ FROM iceberg.sales.customers;
 
 Docker with Compose.
 
-These host ports must be free: `5432`, `8000`, `8080`, `8333`, `8888`.
+These host ports must be free: `5432`, `5522`, `8000`, `8080`, `8181`, `8333`, `8888`.
 
 ## Start
 
@@ -56,6 +57,8 @@ Wait until the seed container prints `Ready. Query iceberg.sales.customers and i
 http://localhost:8000 lists the tables Trino can see, runs a SQL statement, renders the rows in the page, and downloads that result as CSV. The on-screen table stops at 500 rows. The CSV includes up to 10,000. There is no login. It is meant for this local stack.
 
 Click a table name to query it. Cmd-Enter or Ctrl-Enter also runs the statement in the editor.
+
+http://localhost:8000/notebooks is a separate page for [Duck-UI](https://github.com/caioricciuti/duck-ui), an open-source DuckDB workbench with SQL, Python, and Markdown notebooks. DuckDB runs in the browser. On startup it attaches the Iceberg REST catalog, so a SQL cell can run `SELECT * FROM iceberg.sales.customers` against the same tables as the SQL page. Compose publishes the workbench on port 5522 and the catalog on port 8181. The browser reads Parquet directly from SeaweedFS.
 
 ## Query
 
@@ -117,4 +120,6 @@ sql/02-seed.sql                        sample rows
 sql/03-sample-queries.sql              join, partitions, snapshots
 scripts/seed.sh                        runs DDL, then loads rows once
 web/                                   query page on port 8000
+catalog/                               Iceberg REST fixture and browser CORS proxy
+duck-ui/                               notebook bootstrap that attaches the catalog
 ```

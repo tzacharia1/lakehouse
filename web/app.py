@@ -179,6 +179,11 @@ def index():
     return FileResponse("static/index.html")
 
 
+@app.get("/notebooks")
+def notebooks():
+    return FileResponse("static/notebooks.html")
+
+
 @app.get("/api/tables")
 def tables():
     return {"tables": list_tables()}

@@ -48,17 +48,11 @@ function setMessage(text, isError) {
   messageNode.className = isError ? "message error" : "message";
 }
 
-function publishResults(payload) {
-  window.__lakehouseResult = payload;
-  document.dispatchEvent(new CustomEvent("lakehouse-results", { detail: payload }));
-}
-
 function renderResults(payload) {
   tableHead.replaceChildren();
   tableBody.replaceChildren();
   if (!payload.columns.length) {
     statusNode.textContent = `Finished in ${payload.elapsed_ms} ms. No result set.`;
-    publishResults(payload);
     return;
   }
 
@@ -89,7 +83,6 @@ function renderResults(payload) {
     ? `Showing ${payload.row_count} rows (limited to ${payload.limit})`
     : `${payload.row_count} row${payload.row_count === 1 ? "" : "s"}`;
   statusNode.textContent = `${shown} · ${payload.elapsed_ms} ms`;
-  publishResults(payload);
 }
 
 async function runQuery(sql) {
@@ -114,17 +107,14 @@ async function runQuery(sql) {
       tableBody.replaceChildren();
       statusNode.textContent = "";
       setMessage(payload.detail || "Query failed.", true);
-      publishResults({ columns: [], rows: [], row_count: 0, truncated: false, limit: 0, elapsed_ms: 0, sql: "" });
       return;
     }
     activeSql = statement;
-    payload.sql = statement;
     renderResults(payload);
     downloadButton.disabled = payload.columns.length === 0;
   } catch (error) {
     statusNode.textContent = "";
     setMessage(error.message, true);
-    publishResults({ columns: [], rows: [], row_count: 0, truncated: false, limit: 0, elapsed_ms: 0, sql: "" });
   } finally {
     runButton.disabled = false;
   }

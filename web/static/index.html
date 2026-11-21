@@ -4,17 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lakehouse</title>
-  <link rel="stylesheet" href="/static/app.css?v=7">
-  <script type="importmap">
-  {
-    "imports": {
-      "@duckdb/duckdb-wasm": "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.32.0/dist/duckdb-browser.mjs",
-      "apache-arrow": "https://cdn.jsdelivr.net/npm/apache-arrow@17.0.0/Arrow.dom.mjs",
-      "flatbuffers": "https://cdn.jsdelivr.net/npm/flatbuffers@24.3.25/mjs/flatbuffers.js",
-      "tslib": "https://cdn.jsdelivr.net/npm/tslib@2.8.1/tslib.es6.mjs"
-    }
-  }
-  </script>
+  <link rel="stylesheet" href="/static/app.css?v=8">
 </head>
 <body>
   <header class="topbar">
@@ -22,6 +12,10 @@
       <p class="eyebrow">Trino · Iceberg</p>
       <h1>Lakehouse</h1>
     </div>
+    <nav class="nav" aria-label="Pages">
+      <a href="/" aria-current="page">SQL</a>
+      <a href="/notebooks">Notebooks</a>
+    </nav>
     <p class="hint">Preview shows 500 rows. CSV download includes up to 10,000.</p>
   </header>
 
@@ -57,47 +51,6 @@ FROM iceberg.sales.customers</textarea>
         <div id="lineage-track" class="lineage-track"></div>
       </section>
 
-      <section id="analyze" class="analyze" hidden>
-        <div class="analyze-heading">
-          <h2>Report</h2>
-          <p id="analyze-note" class="muted"></p>
-        </div>
-        <button type="button" id="analyze-more" class="secondary" hidden>Use up to 10,000 rows</button>
-        <p class="zone-label">Columns</p>
-        <div id="analyze-columns" class="column-tray"></div>
-        <div class="zones">
-          <div class="zone" data-zone="filters">
-            <h3>Filters</h3>
-            <div class="zone-chips"></div>
-          </div>
-          <div class="zone" data-zone="columns">
-            <h3>Columns</h3>
-            <div class="zone-chips"></div>
-          </div>
-          <div class="zone" data-zone="rows">
-            <h3>Rows</h3>
-            <div class="zone-chips"></div>
-          </div>
-          <div class="zone" data-zone="values">
-            <h3>Values</h3>
-            <div class="zone-chips"></div>
-          </div>
-        </div>
-        <div id="analyze-filters" class="filter-list"></div>
-        <p id="analyze-status" class="status"></p>
-        <div id="analyze-error" class="message error" hidden></div>
-        <details id="analyze-sql-wrap" hidden>
-          <summary>DuckDB SQL</summary>
-          <pre id="analyze-sql"></pre>
-        </details>
-        <div class="table-scroll">
-          <table id="pivot">
-            <thead></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-
       <section class="results">
         <div id="message" class="message" hidden></div>
         <div class="table-scroll">
@@ -110,15 +63,6 @@ FROM iceberg.sales.customers</textarea>
     </main>
   </div>
 
-  <script src="/static/app.js?v=6"></script>
-  <script type="module">
-    import("/static/pivot.js?v=6").catch(() => {
-      const section = document.querySelector("#analyze");
-      const note = document.querySelector("#analyze-note");
-      if (!section || !note) return;
-      section.hidden = false;
-      note.textContent = "The report builder could not load. The SQL editor still works.";
-    });
-  </script>
+  <script src="/static/app.js?v=7"></script>
 </body>
 </html>

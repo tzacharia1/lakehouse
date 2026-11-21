@@ -28,6 +28,7 @@ services:
     ports:
       - "8333:8333" # S3 API
       - "8888:8888" # filer UI
+    command: ["mini", "-s3.allowedOrigins=*"]
     volumes:
       - seaweed-data:/data
     healthcheck:
@@ -79,6 +80,70 @@ services:
       TRINO_USER: trino
     depends_on:
       trino:
+        condition: service_healthy
+
+  # REST view of the same JDBC catalog Trino uses. The browser cannot speak JDBC.
+  iceberg-rest:
+    build: ./catalog
+    container_name: lakehouse-iceberg-rest
+    environment:
+      CATALOG_CATALOG__IMPL: org.apache.iceberg.jdbc.JdbcCatalog
+      CATALOG_URI: jdbc:postgresql://postgres:5432/iceberg
+      CATALOG_JDBC_USER: iceberg
+      CATALOG_JDBC_PASSWORD: iceberg
+      CATALOG_JDBC_SCHEMA__VERSION: V1
+      CATALOG_JDBC_INIT__CATALOG__TABLES: "false"
+      CATALOG_CATALOG_NAME: iceberg
+      CATALOG_WAREHOUSE: s3://warehouse/
+      CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
+      CATALOG_S3_ENDPOINT: http://seaweedfs:8333
+      CATALOG_S3_PATH__STYLE__ACCESS: "true"
+      CATALOG_S3_ACCESS__KEY__ID: lakehouse
+      CATALOG_S3_SECRET__ACCESS__KEY: lakehouse12345
+      CATALOG_CLIENT_REGION: us-east-1
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: lakehouse
+      AWS_SECRET_ACCESS_KEY: lakehouse12345
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+
+  # Browser CORS for the REST catalog. DuckDB WASM calls this from port 5522.
+  iceberg-rest-proxy:
+    image: nginx:1.27-alpine
+    container_name: lakehouse-iceberg-rest-proxy
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./catalog/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      iceberg-rest:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8181/v1/config"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Browser DuckDB workbench (SQL, Python, and Markdown notebooks).
+  # The published image serves the app from /, so the web UI frames host port 5522.
+  # Startup patches the WASM open path so the iceberg catalog is attached.
+  duck-ui:
+    image: ghcr.io/caioricciuti/duck-ui:latest
+    container_name: lakehouse-duck-ui
+    ports:
+      - "5522:5522"
+    entrypoint: ["/bin/sh", "/lakehouse/entrypoint.sh"]
+    volumes:
+      - ./duck-ui/entrypoint.sh:/lakehouse/entrypoint.sh:ro
+      - ./duck-ui/patch.js:/lakehouse/patch.js:ro
+      - ./duck-ui/lakehouse-bootstrap.js:/app/dist/lakehouse-bootstrap.js:ro
+      - ./duck-ui/sw.js:/app/dist/sw.js:ro
+      - ./duck-ui/serve.json:/app/serve.json:ro
+    depends_on:
+      iceberg-rest-proxy:
         condition: service_healthy
 
 volumes:
