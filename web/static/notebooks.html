@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notebooks · Lakehouse</title>
+  <link rel="stylesheet" href="/static/app.css?v=8">
+</head>
+<body class="notebooks-page">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">DuckDB · Notebooks</p>
+      <h1>Lakehouse</h1>
+    </div>
+    <nav class="nav" aria-label="Pages">
+      <a href="/">SQL</a>
+      <a href="/notebooks" aria-current="page">Notebooks</a>
+    </nav>
+    <p class="hint">SQL, Python, and Markdown notebooks. SQL cells query the Iceberg catalog, for example iceberg.sales.customers.</p>
+  </header>
+  <iframe id="duck-ui" class="notebook-frame" title="DuckDB notebooks"></iframe>
+  <p id="notebook-fallback" class="notebook-fallback" hidden>
+    Duck-UI is not responding on port 5522.
+    <a id="notebook-open" href="http://localhost:5522/">Open it directly</a>.
+  </p>
+  <script>
+    const host = location.hostname || "localhost";
+    const src = location.protocol + "//" + host + ":5522/";
+    const frame = document.getElementById("duck-ui");
+    const fallback = document.getElementById("notebook-fallback");
+    const openLink = document.getElementById("notebook-open");
+    openLink.href = src;
+    let loaded = false;
+    frame.addEventListener("load", () => {
+      loaded = true;
+      fallback.hidden = true;
+    });
+    frame.src = src;
+    window.setTimeout(() => {
+      if (loaded) return;
+      frame.hidden = true;
+      fallback.hidden = false;
+    }, 8000);
+  </script>
+</body>
+</html>
